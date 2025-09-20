@@ -3,11 +3,10 @@ using System.Collections.Generic;
 using UnityEngine;
 
 [RequireComponent(typeof(MeshFilter), typeof(MeshRenderer), typeof(MeshCollider))]
-public class SimpleChunk : MonoBehaviour
+public class Chunk : MonoBehaviour
 {
     [Header("Dimensions")]
-    public int width = 100;        // nombre de cellules en X
-    public int depth = 100;        // nombre de cellules en Z
+    public int chunkSize = 100;        // nombre de cellules en X
     public float blockSize = 0.2f;  // taille d'une cellule
 
     [Header("Material (optional)")]
@@ -34,9 +33,9 @@ public class SimpleChunk : MonoBehaviour
 
         // On crée uniquement la face "top" de chaque bloc (surface plate).
         // Pour tester le déplacement c'est largement suffisant et rapide.
-        for (int x = 0; x < width; x++)
+        for (int x = 0; x < chunkSize; x++)
         {
-            for (int z = 0; z < depth; z++)
+            for (int z = 0; z < chunkSize; z++)
             {
                 // position de base de la cellule (coin bas gauche)
                 Vector3 basePos = new Vector3(x * blockSize, 0f, z * blockSize);
