@@ -1,84 +1,107 @@
-using System;
-using System.Collections.Generic;
 using UnityEngine;
+using Unity.Collections;
+using Unity.Jobs;
+using Unity.Burst;
+using System.Collections;
 
 [RequireComponent(typeof(MeshFilter), typeof(MeshRenderer), typeof(MeshCollider))]
 public class Chunk : MonoBehaviour
 {
-    [Header("Dimensions")]
-    public int chunkSize = 100;        // nombre de cellules en X
-    public float blockSize = 0.2f;  // taille d'une cellule
+    public int chunkSize = 100;
+    public float blockSize = 0.2f;
+
 
     [Header("Material (optional)")]
     public Material material;
+    private MeshFilter meshFilter;
+    private MeshCollider meshCollider;
+    private MeshRenderer meshRenderer;
 
     void Start()
     {
-        GenerateChunk();
+        meshFilter = GetComponent<MeshFilter>();
+        meshCollider = GetComponent<MeshCollider>();
+        meshRenderer = GetComponent<MeshRenderer>();
+        if (material != null) meshRenderer.material = material;
+        StartCoroutine(GenerateMeshAsync());
     }
 
-    void GenerateChunk()
+    IEnumerator GenerateMeshAsync()
     {
-        var mf = GetComponent<MeshFilter>();
-        var mr = GetComponent<MeshRenderer>();
-        var mc = GetComponent<MeshCollider>();
+        int vertCount = (chunkSize + 1) * (chunkSize + 1);
 
-        if (material != null) mr.material = material;
+        NativeArray<Vector3> vertices = new NativeArray<Vector3>(vertCount, Allocator.TempJob);
+        NativeArray<int> triangles = new NativeArray<int>(chunkSize * chunkSize * 6, Allocator.TempJob);
 
-        List<Vector3> vertices = new List<Vector3>();
-        List<int> triangles = new List<int>();
-        List<Vector2> uvs = new List<Vector2>();
-
-        int vertCount = 0;
-
-        // On crée uniquement la face "top" de chaque bloc (surface plate).
-        // Pour tester le déplacement c'est largement suffisant et rapide.
-        for (int x = 0; x < chunkSize; x++)
+        // Lancer le job
+        GeneratePlaneJob job = new GeneratePlaneJob
         {
-            for (int z = 0; z < chunkSize; z++)
+            chunkSize = chunkSize,
+            blockSize = blockSize,
+            vertices = vertices,
+            triangles = triangles
+        };
+
+        JobHandle handle = job.Schedule();
+
+        // Attendre la fin sans bloquer
+        yield return new WaitUntil(() => handle.IsCompleted);
+        handle.Complete();
+
+        // Convertir les données en Mesh Unity
+        Mesh mesh = new Mesh();
+        mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
+        mesh.SetVertices(vertices);
+        mesh.SetTriangles(triangles.ToArray(), 0);
+        mesh.RecalculateNormals();
+
+        meshFilter.sharedMesh = mesh;
+        meshCollider.sharedMesh = mesh;
+
+        // Libérer la mémoire native
+        vertices.Dispose();
+        triangles.Dispose();
+    }
+}
+
+[BurstCompile]
+public struct GeneratePlaneJob : IJob
+{
+    public int chunkSize;
+    public float blockSize;
+
+    public NativeArray<Vector3> vertices;
+    public NativeArray<int> triangles;
+
+    public void Execute()
+    {
+        // Génération des vertices
+        int v = 0;
+        for (int z = 0; z <= chunkSize; z++)
+        {
+            for (int x = 0; x <= chunkSize; x++)
             {
-                // position de base de la cellule (coin bas gauche)
-                Vector3 basePos = new Vector3(x * blockSize, 0f, z * blockSize);
-
-                // sommets de la face supérieure (y = blockSize)
-                Vector3 v0 = basePos + new Vector3(0f, blockSize, 0f);             // (0,1,0)
-                Vector3 v1 = basePos + new Vector3(blockSize, blockSize, 0f);     // (1,1,0)
-                Vector3 v2 = basePos + new Vector3(blockSize, blockSize, blockSize); // (1,1,1)
-                Vector3 v3 = basePos + new Vector3(0f, blockSize, blockSize);     // (0,1,1)
-
-                vertices.Add(v0);
-                vertices.Add(v1);
-                vertices.Add(v2);
-                vertices.Add(v3);
-
-                // Deux triangles (ordre pour normal vers le haut)
-                triangles.Add(vertCount + 0);
-                triangles.Add(vertCount + 2);
-                triangles.Add(vertCount + 1);
-
-                triangles.Add(vertCount + 0);
-                triangles.Add(vertCount + 3);
-                triangles.Add(vertCount + 2);
-
-                // UVs simples (pour pouvoir texturer si besoin)
-                uvs.Add(new Vector2(0, 0));
-                uvs.Add(new Vector2(1, 0));
-                uvs.Add(new Vector2(1, 1));
-                uvs.Add(new Vector2(0, 1));
-                vertCount += 4;
+                vertices[v++] = new Vector3(x * blockSize, 0, z * blockSize);
             }
         }
 
-        Mesh mesh = new Mesh();
-        mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32; // sûr pour grands meshes
-        mesh.SetVertices(vertices);
-        mesh.SetTriangles(triangles, 0);
-        mesh.SetUVs(0, uvs);
-        mesh.RecalculateNormals();
-        mesh.RecalculateBounds();
+        // Génération des triangles
+        int t = 0;
+        int vertPerRow = chunkSize + 1;
+        for (int z = 0; z < chunkSize; z++)
+        {
+            for (int x = 0; x < chunkSize; x++)
+            {
+                int start = z * vertPerRow + x;
 
-        // Assigner au MeshFilter et au MeshCollider
-        mf.sharedMesh = mesh;
-        mc.sharedMesh = mesh;
+                triangles[t++] = start;
+                triangles[t++] = start + vertPerRow + 1;
+                triangles[t++] = start + 1;
+
+                triangles[t++] = start;
+                triangles[t++] = start + vertPerRow;
+                triangles[t++] = start + vertPerRow + 1;
+            }
+        }
     }
 }
