@@ -6,9 +6,9 @@ using UnityEngine;
 public class SimpleChunk : MonoBehaviour
 {
     [Header("Dimensions")]
-    public int width = 16;        // nombre de cellules en X
-    public int depth = 16;        // nombre de cellules en Z
-    public float blockSize = 1f;  // taille d'une cellule
+    public int width = 100;        // nombre de cellules en X
+    public int depth = 100;        // nombre de cellules en Z
+    public float blockSize = 0.2f;  // taille d'une cellule
 
     [Header("Material (optional)")]
     public Material material;
@@ -68,11 +68,6 @@ public class SimpleChunk : MonoBehaviour
                 uvs.Add(new Vector2(0, 1));
                 vertCount += 4;
             }
-        }
-        
-        foreach (var v in uvs)
-        {
-            Debug.DrawLine(new Vector3(v.x, 0, v.y), new Vector3(v.x, 10, v.y), Color.red, 100f);
         }
 
         Mesh mesh = new Mesh();
