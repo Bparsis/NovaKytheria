@@ -6,33 +6,26 @@ using UnityEngine;
 using UnityEngine.UI;
 
 [BurstCompile]
-public struct GetVoxelDataJob : IJob
+public struct GetVoxelDataJob : IJobParallelFor
 {
     public int chunkSize;
     public Vector3Int chunkCoords;
-    public NativeArray<byte> voxels; // length = sizeX*sizeY*sizeZ
+    public NativeArray<byte> voxels;
 
-    public void Execute()
+    public void Execute(int index)
     {
         int sizeWithBorder = chunkSize + 2;
 
-        for (int z = -1; z < chunkSize + 1; z++)
-            for (int y = -1; y < chunkSize + 1; y++)
-                for (int x = -1; x < chunkSize + 1; x++)
-                {
-                    int worldX = chunkCoords.x * chunkSize + x;
-                    int worldY = chunkCoords.y * chunkSize + y;
-                    int worldZ = chunkCoords.z * chunkSize + z;
+        // Conversion index linéaire → x, y, z
+        int x = index % sizeWithBorder;
+        int y = (index / sizeWithBorder) % sizeWithBorder;
+        int z = index / (sizeWithBorder * sizeWithBorder);
 
-                    int i = Index(x + 1, y + 1, z + 1); // +1 pour bordure
-                    voxels[i] = (worldY < 0) ? (byte)1 : (byte)0;
-                }
-    }
+        int worldX = chunkCoords.x * chunkSize + (x - 1);
+        int worldY = chunkCoords.y * chunkSize + (y - 1);
+        int worldZ = chunkCoords.z * chunkSize + (z - 1);
 
-    private int Index(int x, int y, int z)
-    {
-        int sizeWithBorder = chunkSize + 2;
-        return x + sizeWithBorder * (y + sizeWithBorder * z);
+        voxels[index] = (worldY < 0) ? (byte)1 : (byte)0;
     }
 }
 

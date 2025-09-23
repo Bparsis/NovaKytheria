@@ -19,7 +19,7 @@ public class Chunk : MonoBehaviour
     // voxel data: 1 = solid, 0 = empty
     // ici simple demo : remplissage plein au debut, mais tu peux remplir via Perlin/etc.
     private NativeArray<byte> voxels; // length = sizeX*sizeY*sizeZ
-
+    private JobHandle handle;
     private MeshFilter mf;
     private MeshCollider mc;
     private MeshRenderer mr;
@@ -35,16 +35,20 @@ public class Chunk : MonoBehaviour
     void Start()
     {
         int sizeWithBorder = chunkSize + 2;
-        voxels = new NativeArray<byte>(sizeWithBorder * sizeWithBorder * sizeWithBorder, Allocator.Persistent);
+        int totalVoxels = sizeWithBorder * sizeWithBorder * sizeWithBorder;
+
+        voxels = new NativeArray<byte>(totalVoxels, Allocator.Persistent);
 
         var job = new GetVoxelDataJob
         {
             chunkSize = chunkSize,
             chunkCoords = chunkCoords,
-            voxels = voxels,
+            voxels = voxels
         };
-        JobHandle handle = job.Schedule();
-        handle.Complete();
+
+        // Schedule avec batchSize (par ex. 64)
+        handle = job.Schedule(totalVoxels, 64);
+        // while (!handle.IsCompleted) yield return null;
 
         // voxels = new NativeArray<byte>(new byte[] {
         //                 0,0,0,0,
@@ -78,6 +82,8 @@ public class Chunk : MonoBehaviour
 
     IEnumerator GenerateMeshRoutine()
     {
+
+
         var vertices = new NativeList<Vector3>(Allocator.Persistent);
         var triangles = new NativeList<int>(Allocator.Persistent);
         var uvs = new NativeList<Vector2>(Allocator.Persistent);
@@ -94,7 +100,7 @@ public class Chunk : MonoBehaviour
             normals = normals
 
         };
-        JobHandle handle = job.Schedule();
+        handle = job.Schedule(handle);
 
         while (!handle.IsCompleted) yield return null;
         handle.Complete();
