@@ -1,107 +1,126 @@
+using System.Collections;
 using UnityEngine;
 using Unity.Collections;
 using Unity.Jobs;
 using Unity.Burst;
-using System.Collections;
+using System;
 
 [RequireComponent(typeof(MeshFilter), typeof(MeshRenderer), typeof(MeshCollider))]
 public class Chunk : MonoBehaviour
 {
-    public int chunkSize = 100;
-    public float blockSize = 0.2f;
+    [Header("Chunk settings")]
+    public int chunkSize = 160;
+    public float voxelSize = 0.2f;
+    public Vector3Int chunkCoords = Vector3Int.zero; // position en chunks dans le monde
 
-
-    [Header("Material (optional)")]
+    [Header("Visual")]
     public Material material;
-    private MeshFilter meshFilter;
-    private MeshCollider meshCollider;
-    private MeshRenderer meshRenderer;
+
+    // voxel data: 1 = solid, 0 = empty
+    // ici simple demo : remplissage plein au debut, mais tu peux remplir via Perlin/etc.
+    private NativeArray<byte> voxels; // length = sizeX*sizeY*sizeZ
+
+    private MeshFilter mf;
+    private MeshCollider mc;
+    private MeshRenderer mr;
+
+    void Awake()
+    {
+        mf = GetComponent<MeshFilter>();
+        mc = GetComponent<MeshCollider>();
+        mr = GetComponent<MeshRenderer>();
+        if (material != null) mr.sharedMaterial = material;
+    }
 
     void Start()
     {
-        meshFilter = GetComponent<MeshFilter>();
-        meshCollider = GetComponent<MeshCollider>();
-        meshRenderer = GetComponent<MeshRenderer>();
-        if (material != null) meshRenderer.material = material;
-        StartCoroutine(GenerateMeshAsync());
-    }
+        int sizeWithBorder = chunkSize + 2;
+        voxels = new NativeArray<byte>(sizeWithBorder * sizeWithBorder * sizeWithBorder, Allocator.Persistent);
 
-    IEnumerator GenerateMeshAsync()
-    {
-        int vertCount = (chunkSize + 1) * (chunkSize + 1);
-
-        NativeArray<Vector3> vertices = new NativeArray<Vector3>(vertCount, Allocator.TempJob);
-        NativeArray<int> triangles = new NativeArray<int>(chunkSize * chunkSize * 6, Allocator.TempJob);
-
-        // Lancer le job
-        GeneratePlaneJob job = new GeneratePlaneJob
+        var job = new GetVoxelDataJob
         {
             chunkSize = chunkSize,
-            blockSize = blockSize,
-            vertices = vertices,
-            triangles = triangles
+            chunkCoords = chunkCoords,
+            voxels = voxels,
         };
-
         JobHandle handle = job.Schedule();
-
-        // Attendre la fin sans bloquer
-        yield return new WaitUntil(() => handle.IsCompleted);
         handle.Complete();
 
-        // Convertir les données en Mesh Unity
+        // voxels = new NativeArray<byte>(new byte[] {
+        //                 0,0,0,0,
+        //                 0,0,0,0,
+        //                 0,0,0,0,
+        //                 0,0,0,0,
+
+        //                 0,0,0,0,
+        //                 0,1,1,0,
+        //                 0,0,0,0,
+        //                 0,0,0,0,
+
+        //                 0,0,0,0,
+        //                 0,1,1,0,
+        //                 0,0,0,0,
+        //                 0,0,0,0,
+
+        //                 0,0,0,0,
+        //                 0,0,0,0,
+        //                 0,0,0,0,
+        //                 0,0,0,0,
+        //             }, Allocator.Persistent);
+        // Lance job de génération de mesh
+        StartCoroutine(GenerateMeshRoutine());
+    }
+
+    void OnDestroy()
+    {
+        if (voxels.IsCreated) voxels.Dispose();
+    }
+
+    IEnumerator GenerateMeshRoutine()
+    {
+        var vertices = new NativeList<Vector3>(Allocator.Persistent);
+        var triangles = new NativeList<int>(Allocator.Persistent);
+        var uvs = new NativeList<Vector2>(Allocator.Persistent);
+        var normals = new NativeList<Vector3>(Allocator.Persistent);
+        var job = new GreedyMesherJob
+        {
+            chunkSize = chunkSize,
+            voxelSize = voxelSize,
+            voxels = voxels,
+
+            vertices = vertices,
+            triangles = triangles,
+            uvs = uvs,
+            normals = normals
+
+        };
+        JobHandle handle = job.Schedule();
+
+        while (!handle.IsCompleted) yield return null;
+        handle.Complete();
+
+        Vector3[] verts = job.vertices.AsArray().ToArray();
+        int[] tris = job.triangles.AsArray().ToArray();
+        Vector2[] uvArr = job.uvs.AsArray().ToArray();
+        Vector3[] norms = job.normals.AsArray().ToArray();
+
+        // Construire le mesh (doit se faire sur main thread)
         Mesh mesh = new Mesh();
         mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
-        mesh.SetVertices(vertices);
-        mesh.SetTriangles(triangles.ToArray(), 0);
-        mesh.RecalculateNormals();
+        mesh.vertices = verts;
+        mesh.triangles = tris;
+        mesh.uv = uvArr;
+        mesh.normals = norms;
+        mesh.RecalculateBounds(); // (normales déjà fournies, mais ok)
 
-        meshFilter.sharedMesh = mesh;
-        meshCollider.sharedMesh = mesh;
+        mf.sharedMesh = mesh;
+        mc.sharedMesh = mesh;
 
-        // Libérer la mémoire native
         vertices.Dispose();
         triangles.Dispose();
-    }
-}
-
-[BurstCompile]
-public struct GeneratePlaneJob : IJob
-{
-    public int chunkSize;
-    public float blockSize;
-
-    public NativeArray<Vector3> vertices;
-    public NativeArray<int> triangles;
-
-    public void Execute()
-    {
-        // Génération des vertices
-        int v = 0;
-        for (int z = 0; z <= chunkSize; z++)
-        {
-            for (int x = 0; x <= chunkSize; x++)
-            {
-                vertices[v++] = new Vector3(x * blockSize, 0, z * blockSize);
-            }
-        }
-
-        // Génération des triangles
-        int t = 0;
-        int vertPerRow = chunkSize + 1;
-        for (int z = 0; z < chunkSize; z++)
-        {
-            for (int x = 0; x < chunkSize; x++)
-            {
-                int start = z * vertPerRow + x;
-
-                triangles[t++] = start;
-                triangles[t++] = start + vertPerRow + 1;
-                triangles[t++] = start + 1;
-
-                triangles[t++] = start;
-                triangles[t++] = start + vertPerRow;
-                triangles[t++] = start + vertPerRow + 1;
-            }
-        }
+        uvs.Dispose();
+        normals.Dispose();
+        voxels.Dispose();
+        yield break;
     }
 }

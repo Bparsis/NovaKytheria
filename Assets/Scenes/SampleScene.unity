@@ -149,8 +149,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   chunkPrefab: {fileID: 8830055232979573517, guid: d5b7cbecc9b4c8149b0b177125b16a84, type: 3}
-  renderDistance: 25
-  chunkSize: 100
+  renderDistance: 10
+  simultaneousChunks: 3
+  chunkSize: 160
   blockSize: 0.2
 --- !u!4 &1249817804
 Transform:
