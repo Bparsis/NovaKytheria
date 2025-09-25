@@ -11,6 +11,7 @@ public class Chunk : MonoBehaviour
     [Header("Chunk settings")]
     public int chunkSize = 160;
     public float voxelSize = 0.2f;
+    public bool parallelVoxelGet = false;
     public Vector3Int chunkCoords = Vector3Int.zero; // position en chunks dans le monde
 
     [Header("Visual")]
@@ -39,15 +40,28 @@ public class Chunk : MonoBehaviour
 
         voxels = new NativeArray<byte>(totalVoxels, Allocator.Persistent);
 
-        var job = new GetVoxelDataJob
-        {
-            chunkSize = chunkSize,
-            chunkCoords = chunkCoords,
-            voxels = voxels
-        };
-
+        Debug.Log("parallelVoxelGet: " + parallelVoxelGet);
         // Schedule avec batchSize (par ex. 64)
-        handle = job.Schedule(totalVoxels, 64);
+        if (parallelVoxelGet)
+        {
+            var job = new GetVoxelDataParallelJob
+            {
+                chunkSize = chunkSize,
+                chunkCoords = chunkCoords,
+                voxels = voxels
+            };
+            handle = job.Schedule(totalVoxels, sizeWithBorder);
+        }
+        else
+        {
+            var job = new GetVoxelDataJob
+            {
+                chunkSize = chunkSize,
+                chunkCoords = chunkCoords,
+                voxels = voxels
+            };
+            handle = job.Schedule();
+        }
         // while (!handle.IsCompleted) yield return null;
 
         // voxels = new NativeArray<byte>(new byte[] {

@@ -1,0 +1,175 @@
+# 📖 Innovations et Mécaniques Préliminaires
+
+Ce document regroupe les idées d’innovations prévues pour le jeu, ainsi que des réflexions sur leur intérêt, les risques potentiels et des suggestions pour leur intégration.
+
+---
+
+## 🎨 1. Graphismes : 3D Voxel / Lowpoly
+- Permet de se démarquer visuellement de Factorio (2D) et Satisfactory (3D réaliste).
+- Style lowpoly : plus facile à produire et performant même avec beaucoup d’éléments.
+
+💡 **Réflexion** :  
+L’enjeu sera la **lisibilité** des usines et des flux dans un monde 3D. Il faudra probablement recourir à une caméra isométrique ou à des **overlays** pour visualiser clairement les ressources.
+
+---
+
+## 🤝 2. Multijoueur Coopératif & Compétitif
+- Coopération possible pour construire des bases communes.
+- Modes compétitifs : alliances temporaires, sabotage, domination économique ou militaire.
+
+💡 **Réflexion** :  
+La **coop simple** est plus réaliste comme première étape (synchronisation des usines). Les modes compétitifs viendraient ensuite, une fois le cœur du gameplay stabilisé.
+
+---
+
+## ⚗️ 3. Ressources Solides, Liquides et Gazeuses
+- Différenciation claire entre les états de la matière.
+- Chaînes de production variées : ex. distillation du pétrole = gaz + liquide.
+
+💡 **Réflexion** :  
+Limiter le nombre de ressources par état (éviter la surcharge).  
+Exemple :  
+- **Solide** : minerais, métal  
+- **Liquide** : eau, pétrole, acide  
+- **Gaz** : oxygène, hydrogène, CO2  
+
+---
+
+## 🚚 4. Moyens de Transport Multiples
+- Convoyeurs, camions, trains, bateaux, avions, drones, téléportation.
+
+💡 **Réflexion** :  
+Éviter de tout donner dès le début → hiérarchiser par **paliers technologiques**.  
+- Début : convoyeurs, chariots  
+- Milieu : trains, bateaux  
+- Avancé : drones, téléportation  
+
+---
+
+## 📦 5. Palettes (innovation intermédiaire)
+- Première forme de logistique empaquetée.  
+- Transport de plusieurs unités d’une même ressource.  
+- Bras spéciaux nécessaires.  
+
+💡 **Réflexion** :  
+Excellente étape **pré-conteneur**.  
+- Palettes = simple, limité, local  
+- Conteneurs = avancé, standardisé, global  
+
+---
+
+## 🏗️ 6. Conteneurs
+- Standard logistique pour tous les types de transport.
+- Compatible avec trains, bateaux, avions, téléporteurs.
+
+💡 **Réflexion** :  
+Créer une **progression logistique** :  
+1. Vrac  
+2. Palettes  
+3. Conteneurs  
+4. Conteneurs avancés (frigoriques, pressurisés, etc.)  
+
+---
+
+## 🏭 7. Bâtiments & Usines Modulables
+- Construction par modules (entrée, raffineuse, sortie, labo…).
+
+💡 **Réflexion** :  
+Permet la créativité, mais attention à l’**ergonomie**.  
+Une approche par “briques standardisées” peut aider à garder le système clair.
+
+---
+
+## 🤖 8. Bras & Manipulateurs Spécialisés
+- Bras standards, rapides, lourds/conteneur, ou sur rails.
+
+💡 **Réflexion** :  
+Éviter la multiplication excessive → regrouper en **familles claires** pour la lisibilité.
+
+---
+
+## 🌍 9. Ressources Limitées & Illimitées
+- Certaines ressources infinies (fer, eau, charbon).  
+- D’autres limitées (uranium, cristaux rares).
+
+💡 **Réflexion** :  
+Mélange équilibré entre sécurité de progression et incitation à explorer/coloniser de nouvelles zones.
+
+---
+
+## 👾 10. Trois Factions d’Ennemis
+- Chaque faction a ses propres comportements et interactions.  
+- Les ennemis évoluent selon l’impact du joueur.
+
+💡 **Réflexion** :  
+Commencer par **une faction aboutie**, puis étendre aux autres.  
+Sinon risque de dilution des efforts en IA.
+
+---
+
+## 🎯 11. Multiples Fins
+- Évasion de la planète, domination, alliance, etc.
+
+💡 **Réflexion** :  
+Les conditions de victoire doivent être intégrées au gameplay (pas juste un écran de fin).  
+Exemple : victoire **économique, militaire, diplomatique**.
+
+---
+
+## 🌳 12. Biomes Variés
+- Désert, marais, montagnes, forêts, océans…  
+- Chaque biome offre avantages/inconvénients spécifiques.
+
+💡 **Réflexion** :  
+Éviter l’uniformité mais rester cohérent.  
+Exemple : désert = solaire mais peu d’eau ; marais = eau abondante mais terrain difficile.
+
+---
+
+## 🗺️ 13. Carte Planétaire (nouvelle innovation)
+- Planète fermée, **wrap sur XZ** (~500M km², équivalent Terre).  
+- Hauteur max : +10 km (Everest).  
+- Hauteur min : -10 km (Fosse des Mariannes).
+
+💡 **Réflexion** :  
+Donne une **cohérence planétaire** et un vrai sentiment d’exploration, contrairement à une carte infinie.  
+Attention toutefois à la **taille exploitable** pour le joueur → garder la planète vaste mais jouable.
+
+---
+
+## 🌋 14. Reliefs & Cavernes
+- Montagnes, volcans, océans, cavernes terrestres et sous-marines.  
+
+💡 **Réflexion** :  
+Excellente idée pour diversifier la verticalité.  
+⚠️ Complexité technique (génération procédurale + gameplay clair).  
+
+---
+
+## ❄️ 15. Biomes selon Latitude
+- Froid aux pôles, chaud à l’équateur.  
+
+💡 **Réflexion** :  
+Très naturel → imite la Terre.  
+Peut guider les stratégies d’implantation (énergie solaire à l’équateur, énergie géothermique ailleurs).
+
+---
+
+## 🌀 16. Mélange Raisonné des Biomes
+- Exemple : équateur alternant forêts tropicales et déserts.  
+
+💡 **Réflexion** :  
+Important pour la rejouabilité et éviter les “bandes trop prévisibles”.  
+Doit rester dans les limites du crédible.
+
+---
+
+## 🏔️ 17. Impact de la Hauteur
+- Neige permanente en haut des montagnes.  
+- Biome spécial entre -5 et -6 km : **cavernes bioluminescentes** (~10 km de large).  
+
+💡 **Réflexion** :  
+Très bonne idée pour donner un côté mystérieux et unique.  
+À utiliser comme **biome rare**, presque une récompense pour l’exploration.
+
+---
