@@ -38,8 +38,6 @@ public struct GetVoxelDataJob : IJob
 
     public void Execute()
     {
-        int sizeWithBorder = chunkSize + 2;
-
         for (int z = -1; z < chunkSize + 1; z++)
             for (int y = -1; y < chunkSize + 1; y++)
                 for (int x = -1; x < chunkSize + 1; x++)
@@ -49,7 +47,19 @@ public struct GetVoxelDataJob : IJob
                     int worldZ = chunkCoords.z * chunkSize + z;
 
                     int i = Index(x + 1, y + 1, z + 1); // +1 pour bordure
-                    voxels[i] = (worldY < 0) ? (byte)1 : (byte)0;
+
+                    int cx = chunkSize / 2;
+                    int cz = chunkSize / 2;
+
+                    int relX = x - cx;
+                    int relZ = z - cz;
+
+                    int height = chunkSize / 2; // hauteur de la pyramide
+                    int r = height - worldY;
+
+                    voxels[i] = (worldY >= 0 && worldY <= height &&
+                                 Math.Abs(relX) <= r && Math.Abs(relZ) <= r)
+                                ? (byte)1 : (byte)0;
                 }
     }
 
@@ -102,7 +112,6 @@ public struct GreedyMesherJob : IJob
             // int u = (axis == 0) ? 1 : 0;
             // int v = (axis == 2) ? 1 : 2;
             // but simpler: we will handle dimension sizes explicitly for each axis below
-
             if (axis == 0)
             {
                 // Slices along X: for xi from 0..chunkSize
@@ -116,6 +125,7 @@ public struct GreedyMesherJob : IJob
                         {
                             bool a = VoxelAt(xi - 1, yi, zi); // left voxel
                             bool b = VoxelAt(xi, yi, zi);     // right voxel
+
                             mask[idx++] = (a != b) ? (a ? 1 : -1) : 0; // store sign: 1 means face pointing +X? we encode later
                         }
                     }
@@ -161,7 +171,7 @@ public struct GreedyMesherJob : IJob
                 }
             }
         }
- 
+
 
         mask.Dispose();
     }

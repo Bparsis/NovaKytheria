@@ -30,9 +30,10 @@ public class World : MonoBehaviour
                     if (coord.magnitude < renderDistance) coords.Add(coord); // Ignore les chunks hors de la distance de rendu
                 }
         coords.Sort((a, b) => a.magnitude.CompareTo(b.magnitude)); // Tri par distance décroissante
-        Debug.Log($"Generating {coords.Count} chunks...");
+
         int chunksThisFrame = 0;
         int generatedChunks = 0;
+
         foreach (var coord in coords)
         {
             Vector3 pos = new(coord.x * chunkSize * blockSize, coord.y * chunkSize * blockSize, coord.z * chunkSize * blockSize);
@@ -45,6 +46,7 @@ public class World : MonoBehaviour
                 chunk.chunkSize = chunkSize; // si tu as ce champ
                 chunk.voxelSize = blockSize; // si tu as ce champ
                 chunk.chunkCoords = coord; // si tu as ce champ
+                chunk.LOD = getLod(coord.magnitude); // si tu as ce champ
             }
             generatedChunks++;
             if (++chunksThisFrame >= simultaneousChunks)
@@ -56,5 +58,13 @@ public class World : MonoBehaviour
             }
         }
         Debug.Log($"World generated in {Time.time - DebugTime} seconds.");
+    }
+
+    int getLod(float distance)
+    {
+        if (distance < renderDistance * 0.25f) return 0; // LOD 0 pour les chunks proches
+        else if (distance < renderDistance * 0.50f) return 1; // LOD 1 pour les chunks moyens
+        else if (distance < renderDistance * 0.75f) return 2; // LOD 2 pour les chunks éloignés
+        else return 3; // LOD 3 pour les chunks lointains
     }
 }

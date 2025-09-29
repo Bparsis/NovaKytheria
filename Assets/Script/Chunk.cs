@@ -13,6 +13,9 @@ public class Chunk : MonoBehaviour
     public float voxelSize = 0.2f;
     public bool parallelVoxelGet = false;
     public Vector3Int chunkCoords = Vector3Int.zero; // position en chunks dans le monde
+    public int LOD = 0; // niveau de détail, si tu veux gérer ça
+    public int step = 1;
+    public int effectiveChunkSize = 0; // chunkSize / step
 
     [Header("Visual")]
     public Material material;
@@ -35,18 +38,18 @@ public class Chunk : MonoBehaviour
 
     void Start()
     {
-        int sizeWithBorder = chunkSize + 2;
+        step = (int)Mathf.Pow(2, LOD); // si tu veux gérer le LOD
+        effectiveChunkSize = chunkSize / step;
+        int sizeWithBorder = effectiveChunkSize + 2;
         int totalVoxels = sizeWithBorder * sizeWithBorder * sizeWithBorder;
 
         voxels = new NativeArray<byte>(totalVoxels, Allocator.Persistent);
-
-        Debug.Log("parallelVoxelGet: " + parallelVoxelGet);
         // Schedule avec batchSize (par ex. 64)
         if (parallelVoxelGet)
         {
             var job = new GetVoxelDataParallelJob
             {
-                chunkSize = chunkSize,
+                chunkSize = effectiveChunkSize,
                 chunkCoords = chunkCoords,
                 voxels = voxels
             };
@@ -56,7 +59,7 @@ public class Chunk : MonoBehaviour
         {
             var job = new GetVoxelDataJob
             {
-                chunkSize = chunkSize,
+                chunkSize = effectiveChunkSize,
                 chunkCoords = chunkCoords,
                 voxels = voxels
             };
@@ -104,8 +107,8 @@ public class Chunk : MonoBehaviour
         var normals = new NativeList<Vector3>(Allocator.Persistent);
         var job = new GreedyMesherJob
         {
-            chunkSize = chunkSize,
-            voxelSize = voxelSize,
+            chunkSize = effectiveChunkSize,
+            voxelSize = voxelSize * step,
             voxels = voxels,
 
             vertices = vertices,
