@@ -5,6 +5,7 @@ using UnityEngine;
 
 public class World : MonoBehaviour
 {
+    public int seed = 123456789; // Seed pour la génération du monde
     [Header("Chunk Settings")]
     public GameObject chunkPrefab;  // Le prefab du chunk
     public int renderDistance = 12; // Distance de rendu en chunks (optionnel, si tu veux gérer le LOD)
@@ -16,9 +17,8 @@ public class World : MonoBehaviour
     private float DebugTime = 0f;
     private void Start()
     {
-        // GenerateWorld();
-        DebugTime = Time.time;
-        StartCoroutine(GenerateWorld());
+        // DebugTime = Time.time;
+        // StartCoroutine(GenerateWorld());
     }
 
     IEnumerator GenerateWorld()
