@@ -153,6 +153,7 @@ MonoBehaviour:
   simultaneousChunks: 1
   chunkSize: 160
   blockSize: 0.2
+  nbrOfLODLevels: 3
 --- !u!4 &1249817804
 Transform:
   m_ObjectHideFlags: 0

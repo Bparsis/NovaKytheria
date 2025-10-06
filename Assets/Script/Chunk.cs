@@ -60,6 +60,7 @@ public class Chunk : MonoBehaviour
             var job = new GetVoxelDataJob
             {
                 chunkSize = effectiveChunkSize,
+                step = step,
                 chunkCoords = chunkCoords,
                 voxels = voxels
             };

@@ -33,33 +33,45 @@ public struct GetVoxelDataParallelJob : IJobParallelFor
 public struct GetVoxelDataJob : IJob
 {
     public int chunkSize;
+    public int step;
     public Vector3Int chunkCoords;
     public NativeArray<byte> voxels; // length = sizeX*sizeY*sizeZ
 
     public void Execute()
     {
+        float scale = 0.008f;
         for (int z = -1; z < chunkSize + 1; z++)
             for (int y = -1; y < chunkSize + 1; y++)
                 for (int x = -1; x < chunkSize + 1; x++)
                 {
-                    int worldX = chunkCoords.x * chunkSize + x;
-                    int worldY = chunkCoords.y * chunkSize + y;
-                    int worldZ = chunkCoords.z * chunkSize + z;
+                    int worldY = chunkCoords.y * chunkSize * step + y * step + (step / 2);
+                    int worldX = chunkCoords.x * chunkSize * step + x * step + (step / 2);
+                    int worldZ = chunkCoords.z * chunkSize * step + z * step + (step / 2);
+
 
                     int i = Index(x + 1, y + 1, z + 1); // +1 pour bordure
 
-                    int cx = chunkSize / 2;
-                    int cz = chunkSize / 2;
+                    //?Platform basic
+                    // voxels[i] = (worldY < 0) ? (byte)1 : (byte)0;
 
-                    int relX = x - cx;
-                    int relZ = z - cz;
+                    //?Pyramid
+                    // int cx = chunkSize / 2;
+                    // int cz = chunkSize / 2;
 
-                    int height = chunkSize / 2; // hauteur de la pyramide
-                    int r = height - worldY;
+                    // int relX = x - cx;
+                    // int relZ = z - cz;
 
-                    voxels[i] = (worldY >= 0 && worldY <= height &&
-                                 Math.Abs(relX) <= r && Math.Abs(relZ) <= r)
-                                ? (byte)1 : (byte)0;
+                    // float height = 64f; // hauteur de la pyramide
+                    // float r = height - worldY;
+
+                    // voxels[i] = (worldY >= 0 && worldY <= height &&
+                    //              Math.Abs(relX) <= r && Math.Abs(relZ) <= r)
+                    //             ? (byte)1 : (byte)0;
+
+                    // //?Perlin Noise height
+                    float noiseValue = Mathf.PerlinNoise(worldX * scale, worldZ * scale);
+                    int perlinHeight = Mathf.FloorToInt(noiseValue * 64f);
+                    voxels[i] = (worldY < perlinHeight) ? (byte)1 : (byte)0;
                 }
     }
 
@@ -107,70 +119,49 @@ public struct GreedyMesherJob : IJob
         // For each axis
         // axis = 0 -> x, iterate d from 0..sizeX (slices between voxel columns)
         // axis = 1 -> y, axis = 2 -> z
+        // === Remplace la boucle "for (axis...)" dans Execute() par ceci ===
         for (int axis = 0; axis < 3; axis++)
         {
-            // int u = (axis == 0) ? 1 : 0;
-            // int v = (axis == 2) ? 1 : 2;
-            // but simpler: we will handle dimension sizes explicitly for each axis below
-            if (axis == 0)
+            int maxMaskSizeLocal = chunkSize * chunkSize;
+            for (int slice = 0; slice <= chunkSize; slice++)
             {
-                // Slices along X: for xi from 0..chunkSize
-                for (int xi = 0; xi <= chunkSize; xi++)
+                // On remplit le mask en s'assurant que "u" (width) est la dimension qui varie le plus vite
+                int idx = 0;
+                if (axis == 0) // slices X -> plane YZ  (u = z, v = y)
                 {
-                    // build mask for slice xi (plane yz)
-                    int idx = 0;
-                    for (int zi = 0; zi < chunkSize; zi++)
-                    {
-                        for (int yi = 0; yi < chunkSize; yi++)
+                    for (int v = 0; v < chunkSize; v++)        // v = y
+                        for (int u = 0; u < chunkSize; u++)    // u = z (u inner)
                         {
-                            bool a = VoxelAt(xi - 1, yi, zi); // left voxel
-                            bool b = VoxelAt(xi, yi, zi);     // right voxel
-
-                            mask[idx++] = (a != b) ? (a ? 1 : -1) : 0; // store sign: 1 means face pointing +X? we encode later
-                        }
-                    }
-                    // apply greedy on mask w x h
-
-                    GreedyOnMask(mask, chunkSize, xi, axis);
-                }
-            }
-            else if (axis == 1)
-            {
-                // Slices along Y: xi from 0..chunkSize (plane xz)
-                for (int yi = 0; yi <= chunkSize; yi++)
-                {
-                    int idx = 0;
-                    for (int zi = 0; zi < chunkSize; zi++)
-                    {
-                        for (int xi2 = 0; xi2 < chunkSize; xi2++)
-                        {
-                            bool a = VoxelAt(xi2, yi - 1, zi);
-                            bool b = VoxelAt(xi2, yi, zi);
+                            bool a = VoxelAt(slice - 1, v, u);
+                            bool b = VoxelAt(slice, v, u);
                             mask[idx++] = (a != b) ? (a ? 1 : -1) : 0;
                         }
-                    }
-                    GreedyOnMask(mask, chunkSize, yi, axis);
                 }
-            }
-            else // axis == 2
-            {
-                // Slices along Z: zi from 0..chunkSize (plane xy)
-                for (int zi = 0; zi <= chunkSize; zi++)
+                else if (axis == 1) // slices Y -> plane XZ (u = x, v = z)
                 {
-                    int idx = 0;
-                    for (int yi = 0; yi < chunkSize; yi++)
-                    {
-                        for (int xi2 = 0; xi2 < chunkSize; xi2++)
+                    for (int v = 0; v < chunkSize; v++)        // v = z
+                        for (int u = 0; u < chunkSize; u++)    // u = x
                         {
-                            bool a = VoxelAt(xi2, yi, zi - 1);
-                            bool b = VoxelAt(xi2, yi, zi);
+                            bool a = VoxelAt(u, slice - 1, v);
+                            bool b = VoxelAt(u, slice, v);
                             mask[idx++] = (a != b) ? (a ? 1 : -1) : 0;
                         }
-                    }
-                    GreedyOnMask(mask, chunkSize, zi, axis);
                 }
+                else // axis == 2, slices Z -> plane XY (u = x, v = y)
+                {
+                    for (int v = 0; v < chunkSize; v++)        // v = y
+                        for (int u = 0; u < chunkSize; u++)    // u = x
+                        {
+                            bool a = VoxelAt(u, v, slice - 1);
+                            bool b = VoxelAt(u, v, slice);
+                            mask[idx++] = (a != b) ? (a ? 1 : -1) : 0;
+                        }
+                }
+
+                GreedyOnMask(mask, chunkSize, slice, axis);
             }
         }
+
 
 
         mask.Dispose();
@@ -232,100 +223,67 @@ public struct GreedyMesherJob : IJob
     }
 
     // AddQuadForRect corrigé : calcule la winding en fonction de la normale désirée
-    private void AddQuadForRect(int x, int y, int width, int height, int sliceIndex, int axis, int sign)
+    // === Remplace ta AddQuadForRect par cette version ===
+    private void AddQuadForRect(int u, int v, int width, int height, int sliceIndex, int axis, int sign)
     {
-        // Déterminer origin, du, dv et la normale désirée selon l'axe (corrigé pour X/Y/Z)
         Vector3 origin;
         Vector3 du;
         Vector3 dv;
         Vector3 desiredNormal;
 
-        if (axis == 0) // slices X (plane YZ)
+        if (axis == 0) // plane YZ, u = z, v = y
         {
-            // origin: (sliceIndex, y, x) ; étalement du rectangle : width -> Z, height -> Y
-            origin = new Vector3(sliceIndex * voxelSize, y * voxelSize, x * voxelSize);
-            du = new Vector3(0f, width * voxelSize, 0f);   // le "u" parcourt Z
-            dv = new Vector3(0f, 0f, height * voxelSize);  // le "v" parcourt Y
+            origin = new Vector3(sliceIndex * voxelSize, v * voxelSize, u * voxelSize);
+            du = new Vector3(0f, 0f, width * voxelSize); // u -> +Z
+            dv = new Vector3(0f, height * voxelSize, 0f); // v -> +Y
             desiredNormal = (sign == 1) ? Vector3.right : Vector3.left;
         }
-        else if (axis == 1) // slices Y (plane XZ)
+        else if (axis == 1) // plane XZ, u = x, v = z
         {
-            // origin: (x, sliceIndex, y); étalement : width -> X, height -> Z
-            origin = new Vector3(x * voxelSize, sliceIndex * voxelSize, y * voxelSize);
-            du = new Vector3(width * voxelSize, 0f, 0f);   // u -> X
-            dv = new Vector3(0f, 0f, height * voxelSize);  // v -> Z
+            origin = new Vector3(u * voxelSize, sliceIndex * voxelSize, v * voxelSize);
+            du = new Vector3(width * voxelSize, 0f, 0f); // u -> +X
+            dv = new Vector3(0f, 0f, height * voxelSize); // v -> +Z
             desiredNormal = (sign == 1) ? Vector3.up : Vector3.down;
         }
-        else // axis == 2, slices Z (plane XY)
+        else // axis == 2, plane XY, u = x, v = y
         {
-            // origin: (x, y, sliceIndex); étalement : width -> X, height -> Y
-            origin = new Vector3(x * voxelSize, y * voxelSize, sliceIndex * voxelSize);
-            du = new Vector3(width * voxelSize, 0f, 0f);   // u -> X
-            dv = new Vector3(0f, height * voxelSize, 0f);  // v -> Y
+            origin = new Vector3(u * voxelSize, v * voxelSize, sliceIndex * voxelSize);
+            du = new Vector3(width * voxelSize, 0f, 0f); // u -> +X
+            dv = new Vector3(0f, height * voxelSize, 0f); // v -> +Y
             desiredNormal = (sign == 1) ? Vector3.forward : Vector3.back;
         }
 
-        // coins du quad (dans l'ordre "rectangle")
         Vector3 p0 = origin;
         Vector3 p1 = origin + du;
         Vector3 p2 = origin + du + dv;
         Vector3 p3 = origin + dv;
 
-        // calculer la normale du triangle (p1-p0) x (p2-p0)
-        Vector3 faceNormal = new Vector3(
-            (p1.y - p0.y) * (p2.z - p0.z) - (p1.z - p0.z) * (p2.y - p0.y),
-            (p1.z - p0.z) * (p2.x - p0.x) - (p1.x - p0.x) * (p2.z - p0.z),
-            (p1.x - p0.x) * (p2.y - p0.y) - (p1.y - p0.y) * (p2.x - p0.x)
-        );
-
-        // Si faceNormal et desiredNormal pointent dans des directions opposées -> inverser la winding
+        // On calcule la normale de (du x dv) et on compare au désiré pour savoir si on doit inverser le winding
+        Vector3 faceNormal = Vector3.Cross(du, dv);
         bool needsFlip = Vector3.Dot(faceNormal, desiredNormal) < 0f;
 
         int vStart = vertices.Length;
-
         if (!needsFlip)
         {
-            // ordre normal
-            vertices.Add(p0);
-            vertices.Add(p1);
-            vertices.Add(p2);
-            vertices.Add(p3);
+            vertices.Add(p0); vertices.Add(p1); vertices.Add(p2); vertices.Add(p3);
 
-            triangles.Add(vStart + 0);
-            triangles.Add(vStart + 1);
-            triangles.Add(vStart + 2);
-
-            triangles.Add(vStart + 0);
-            triangles.Add(vStart + 2);
-            triangles.Add(vStart + 3);
+            triangles.Add(vStart + 0); triangles.Add(vStart + 1); triangles.Add(vStart + 2);
+            triangles.Add(vStart + 0); triangles.Add(vStart + 2); triangles.Add(vStart + 3);
         }
         else
         {
-            // ordre inversé
-            vertices.Add(p0);
-            vertices.Add(p3);
-            vertices.Add(p2);
-            vertices.Add(p1);
+            vertices.Add(p0); vertices.Add(p3); vertices.Add(p2); vertices.Add(p1);
 
-            triangles.Add(vStart + 0);
-            triangles.Add(vStart + 1);
-            triangles.Add(vStart + 2);
-
-            triangles.Add(vStart + 0);
-            triangles.Add(vStart + 2);
-            triangles.Add(vStart + 3);
+            triangles.Add(vStart + 0); triangles.Add(vStart + 1); triangles.Add(vStart + 2);
+            triangles.Add(vStart + 0); triangles.Add(vStart + 2); triangles.Add(vStart + 3);
         }
 
-        // UVs simples (tu peux adapter à ton atlas)
         uvs.Add(new Vector2(0, 0));
         uvs.Add(new Vector2(width, 0));
         uvs.Add(new Vector2(width, height));
         uvs.Add(new Vector2(0, height));
 
-        // Normales uniformes = desiredNormal (même si on a flip, normal reste la même)
-        normals.Add(desiredNormal);
-        normals.Add(desiredNormal);
-        normals.Add(desiredNormal);
-        normals.Add(desiredNormal);
+        normals.Add(desiredNormal); normals.Add(desiredNormal); normals.Add(desiredNormal); normals.Add(desiredNormal);
     }
+
 }
