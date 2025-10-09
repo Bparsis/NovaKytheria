@@ -2,11 +2,14 @@ using UnityEngine;
 
 public class GenerationNoise
 {
-    private FastNoiseLite continentalNoise;
-    private FastNoiseLite mountainNoise;
-    private FastNoiseLite oceanNoise;
+    readonly private FastNoiseLite continentalNoise;
+    readonly private float continentFrequency = 1e-13f;
+    readonly private FastNoiseLite mountainNoise;
+    readonly private float mountainFrequency = 2e-9f;
+    readonly private FastNoiseLite oceanNoise;
+    readonly private float oceanFrequency = 3e-9f;
 
-    public GenerationNoise(int seed, float continentFrequency = 1e-13f, float mountainFrequency = 2e-9f, float oceanFrequency = 3e-9f)
+    public GenerationNoise(int seed)
 
     {
         // Continentalité : très basse fréquence (grandes masses)
@@ -41,8 +44,14 @@ public class GenerationNoise
     {
         float n = continentalNoise.GetNoise(x, z);
         n = Mathf.Pow(Mathf.Abs(n), 1.3f) * Mathf.Sign(n);
-        n += 0.05f; // léger biais vers la terre
+        n += 0.1f; // léger biais vers la terre
                    // Debug.Log($"Continentalness at ({x}, {z}) = {n}  --  GenerationNoise.cs L44");
+        return Mathf.Clamp(n, -1f, 1f);
+    }
+    public float GetMountainness(float x, float z)
+    {
+        float n = mountainNoise.GetNoise(x, z);
+        n = Mathf.Pow(Mathf.Abs(n), 1.3f) * Mathf.Sign(n);
         return Mathf.Clamp(n, -1f, 1f);
     }
 
@@ -61,8 +70,8 @@ public class GenerationNoise
         float baseHeight = Mathf.Lerp(-3000f, +3000f, (continental + 1f) / 2f);
         // Debug.Log($"BaseHeight at ({x}, {z}) = {baseHeight}m  --  GenerationNoise.cs L61");
         // Reliefs
-        float mNoise = mountainNoise.GetNoise(x, z)*2f;
-        float oNoise = oceanNoise.GetNoise(x, z)*2f;
+        float mNoise = mountainNoise.GetNoise(x, z)*2.5f;
+        float oNoise = oceanNoise.GetNoise(x, z)*2.5f;
         // Debug.Log($"MountainNoise at ({x}, {z}) = {mNoise}, OceanNoise = {oNoise}  --  GenerationNoise.cs L65");
         // Montagnes (pics)
         float mountainHeight = Mathf.Pow(Mathf.Abs(mNoise), 1.8f) * 4500f * mountainMask;
