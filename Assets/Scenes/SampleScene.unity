@@ -458,7 +458,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   DebugWorldMapPlane: {fileID: 6598379977205961821, guid: e72346742596829429655986bd835cbb, type: 3}
-  size: 2000
+  size: 1000
   worldScale: 250000
   seed: 987654321
 --- !u!4 &2116966602

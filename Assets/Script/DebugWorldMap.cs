@@ -8,9 +8,6 @@ public class DebugWorldMap : MonoBehaviour
     public int size = 1000;
     public float worldScale = 250000f; // distance entre deux pixels (0.2 mètres)
     public int seed = 987654321;
-
-    private Texture2D FinalRenderTex;
-    private Material FinalRenderMat;
     private GenerationNoise genMotor;
 
     void Start()
@@ -18,8 +15,9 @@ public class DebugWorldMap : MonoBehaviour
         genMotor = new GenerationNoise(seed);
         StartCoroutine(ContinentalRenderGen());
         StartCoroutine(MountainRenderGen());
-        StartCoroutine(OceanRenderGen());
-        StartCoroutine(RiverRenderGen());
+        StartCoroutine(MountainMaskRenderGen());
+        // StartCoroutine(OceanRenderGen());
+        // StartCoroutine(RiverRenderGen());
         StartCoroutine(FinalRenderGen());
     }
     IEnumerator RiverRenderGen()
@@ -27,7 +25,7 @@ public class DebugWorldMap : MonoBehaviour
         // Debug.Log("Génération de la carte du monde en cours...");
         GameObject RiverRenderPlane = Instantiate(DebugWorldMapPlane, new Vector3(150, 0, 50), Quaternion.identity, transform);
         RiverRenderPlane.transform.localScale = new Vector3(10, 1, 10);
-        RiverRenderPlane.name = "RiverRenderGen";   
+        RiverRenderPlane.name = "RiverRenderGen";
         Texture2D RiverRenderTex = new Texture2D(size, size, TextureFormat.RGBA32, false);
         Material RiverRenderMat = RiverRenderPlane.GetComponent<Renderer>().material;
         for (int x = 0; x < size; x++)
@@ -53,7 +51,7 @@ public class DebugWorldMap : MonoBehaviour
         // Debug.Log("Génération de la carte du monde en cours...");
         GameObject OceanRenderPlane = Instantiate(DebugWorldMapPlane, new Vector3(150, 0, 150), Quaternion.identity, transform);
         OceanRenderPlane.transform.localScale = new Vector3(10, 1, 10);
-        OceanRenderPlane.name = "OceanRenderGen";   
+        OceanRenderPlane.name = "OceanRenderGen";
         Texture2D OceanRenderTex = new Texture2D(size, size, TextureFormat.RGBA32, false);
         Material OceanRenderMat = OceanRenderPlane.GetComponent<Renderer>().material;
         for (int x = 0; x < size; x++)
@@ -74,12 +72,37 @@ public class DebugWorldMap : MonoBehaviour
         }
         yield return null;
     }
+    IEnumerator MountainMaskRenderGen()
+    {
+        GameObject MountainMaskRenderPlane = Instantiate(DebugWorldMapPlane, new Vector3(150, 0, 150), Quaternion.identity, transform);
+        MountainMaskRenderPlane.transform.localScale = new Vector3(10, 1, 10);
+        MountainMaskRenderPlane.name = "MountainMaskRenderGen";
+        Texture2D MountainMaskRenderTex = new Texture2D(size, size, TextureFormat.RGBA32, false);
+        Material MountainMaskRenderMat = MountainMaskRenderPlane.GetComponent<Renderer>().material;
+        for (int x = 0; x < size; x++)
+        {
+            yield return null; // laisse une frame pour l'instanciation
+            Debug.Log($"Génération de MountainRenderGen en cours... {x * 100 / size}%");
+            MountainMaskRenderTex.Apply();
+            MountainMaskRenderMat.mainTexture = MountainMaskRenderTex;
+            for (int z = 0; z < size; z++)
+            {
+                float worldX = x * worldScale;
+                float worldZ = z * worldScale;
+
+                float m = genMotor.GetMountainMask(worldX, worldZ);
+                Color col = new Color((m + 1f) / 2f, (m + 1f) / 2f, (m + 1f) / 2f);
+                MountainMaskRenderTex.SetPixel(x, z, col);
+            }
+        }
+        yield return null;
+    }
     IEnumerator MountainRenderGen()
     {
         // Debug.Log("Génération de la carte du monde en cours...");
         GameObject MountainRenderPlane = Instantiate(DebugWorldMapPlane, new Vector3(50, 0, 150), Quaternion.identity, transform);
         MountainRenderPlane.transform.localScale = new Vector3(10, 1, 10);
-        MountainRenderPlane.name = "MountainRenderGen";   
+        MountainRenderPlane.name = "MountainRenderGen";
         Texture2D MountainRenderTex = new Texture2D(size, size, TextureFormat.RGBA32, false);
         Material MountainRenderMat = MountainRenderPlane.GetComponent<Renderer>().material;
         for (int x = 0; x < size; x++)
@@ -105,7 +128,7 @@ public class DebugWorldMap : MonoBehaviour
         // Debug.Log("Génération de la carte du monde en cours...");
         GameObject ContinentalRenderPlane = Instantiate(DebugWorldMapPlane, new Vector3(-50, 0, 150), Quaternion.identity, transform);
         ContinentalRenderPlane.transform.localScale = new Vector3(10, 1, 10);
-        ContinentalRenderPlane.name = "ContinentalRenderGen";   
+        ContinentalRenderPlane.name = "ContinentalRenderGen";
         Texture2D ContinentalRenderTex = new Texture2D(size, size, TextureFormat.RGBA32, false);
         Material ContinentalRenderMat = ContinentalRenderPlane.GetComponent<Renderer>().material;
         for (int x = 0; x < size; x++)
@@ -132,8 +155,8 @@ public class DebugWorldMap : MonoBehaviour
         GameObject FinalRenderPlane = Instantiate(DebugWorldMapPlane, new Vector3(0, 0, 0), Quaternion.identity, transform);
         FinalRenderPlane.transform.localScale = new Vector3(20, 1, 20);
         FinalRenderPlane.name = "FinalRenderGen";
-        FinalRenderTex = new Texture2D(size, size, TextureFormat.RGBA32, false);
-        FinalRenderMat = FinalRenderPlane.GetComponent<Renderer>().material;
+        Texture2D FinalRenderTex = new Texture2D(size, size, TextureFormat.RGBA32, false);
+        Material FinalRenderMat = FinalRenderPlane.GetComponent<Renderer>().material;
         for (int x = 0; x < size; x++)
         {
             yield return null; // laisse une frame pour l'instanciation
@@ -161,8 +184,8 @@ public class DebugWorldMap : MonoBehaviour
             if (h < 200) return new Color(0.9f, 0.85f, 0.6f);           // plages
             if (h < 1000) return new Color(0.1f, 0.6f, 0.1f);           // plaine
             if (h < 3000) return new Color(0.3f, 0.4f, 0.2f);           // colline
-            if (h < 5000) return new Color(0.5f, 0.45f, 0.35f);         // montagne
-            if (h < 7000) return new Color(0.7f, 0.7f, 0.7f);           // haute montagne
+            if (h < 5000) return new Color(0.7f, 0.25f, 0.15f);         // montagne
+            if (h < 7000) return new Color(0.7f, 0.05f, 0.07f);           // haute montagne
             return Color.white;                                         // sommet enneigé
         }
         yield return null;
