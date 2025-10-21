@@ -16,6 +16,7 @@ public class Chunk : MonoBehaviour
     public int LOD = 0; // niveau de détail, si tu veux gérer ça
     public int step = 1;
     public int effectiveChunkSize = 0; // chunkSize / step
+    public GenerationNoise genMotor;
 
     [Header("Visual")]
     public Material material;
@@ -62,7 +63,8 @@ public class Chunk : MonoBehaviour
                 chunkSize = effectiveChunkSize,
                 step = step,
                 chunkCoords = chunkCoords,
-                voxels = voxels
+                voxels = voxels,
+                genMotor = genMotor
             };
             handle = job.Schedule();
         }

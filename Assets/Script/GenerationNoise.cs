@@ -12,6 +12,8 @@ public class GenerationNoise
     readonly private float oceanFrequency = 2e-8f;
     readonly private FastNoiseLite riverNoise;
     readonly private float riverFrequency = 1e-8f;
+    readonly private FastNoiseLite caveNoise;
+    readonly private float caveFrequency = 2e-6f;
 
     public GenerationNoise(int seed)
 
@@ -45,6 +47,10 @@ public class GenerationNoise
         riverNoise.SetNoiseType(FastNoiseLite.NoiseType.OpenSimplex2);
         riverNoise.SetFractalType(FastNoiseLite.FractalType.Ridged);
         riverNoise.SetFrequency(riverFrequency);
+
+        caveNoise = new FastNoiseLite(seed);
+        caveNoise.SetNoiseType(FastNoiseLite.NoiseType.OpenSimplex2);
+        caveNoise.SetFrequency(caveFrequency);
     }
 
     #region Generator
@@ -121,6 +127,13 @@ public class GenerationNoise
         return riverMask;
     }
     #endregion River
+    #region Cave
+    public float GetCave(float x, float y, float z)
+    {
+        float caveDensity = caveNoise.GetNoise(x, y, z);
+        return caveDensity;
+    }
+    #endregion Cave
     #endregion Generator
 
     /// <summary>
@@ -134,6 +147,6 @@ public class GenerationNoise
         float oceanDepth = GetOcean(x, z) * 8000 * -1;
         float riverDepth = GetRiver(x, z) * 100000 * -1;
         float finalHeight = baseHeight + mountainHeight + oceanDepth;
-        return Mathf.Clamp(finalHeight, -10000f, 9000f);
+        return Mathf.Clamp(finalHeight, -10000f, 10000f);
     }
 }

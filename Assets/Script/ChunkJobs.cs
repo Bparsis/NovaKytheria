@@ -4,7 +4,6 @@ using Unity.Collections;
 using Unity.Jobs;
 using UnityEngine;
 using UnityEngine.UI;
-
 [BurstCompile]
 public struct GetVoxelDataParallelJob : IJobParallelFor
 {
@@ -32,6 +31,7 @@ public struct GetVoxelDataParallelJob : IJobParallelFor
 [BurstCompile]
 public struct GetVoxelDataJob : IJob
 {
+    public GenerationNoise genMotor;
     public int chunkSize;
     public int step;
     public Vector3Int chunkCoords;
@@ -68,10 +68,10 @@ public struct GetVoxelDataJob : IJob
                     //              Math.Abs(relX) <= r && Math.Abs(relZ) <= r)
                     //             ? (byte)1 : (byte)0;
 
-                    // //?Perlin Noise height
-                    float noiseValue = Mathf.PerlinNoise(worldX * scale, worldZ * scale);
-                    int perlinHeight = Mathf.FloorToInt(noiseValue * 64f);
-                    voxels[i] = (worldY < perlinHeight) ? (byte)1 : (byte)0;
+                    // //?genMotor Noise height
+                    float height = genMotor.GetHeight(x, z);
+                    bool isCaveAir = genMotor.GetCave(x, y, z) < -0.2f && worldY < height ? true : false;
+                    voxels[i] = (worldY < height && !isCaveAir) ? (byte)1 : (byte)0;
                 }
     }
 

@@ -8,6 +8,7 @@ public class World : MonoBehaviour
     public int seed = 123456789; // Seed pour la génération du monde
     [Header("Chunk Settings")]
     public GameObject chunkPrefab;  // Le prefab du chunk
+    public  GenerationNoise genMotor;
     public int renderDistance = 12; // Distance de rendu en chunks (optionnel, si tu veux gérer le LOD)
     public int simultaneousChunks = 1; // Nombre de chunks à générer par frame pour éviter de bloquer
     public int chunkSize = 160;      // Taille d'un chunk (optionnel, si ton script Chunk en a besoin)
@@ -18,6 +19,7 @@ public class World : MonoBehaviour
     private void Start()
     {
         // DebugTime = Time.time;
+        genMotor = new GenerationNoise(seed);
         // StartCoroutine(GenerateWorld());
     }
 
@@ -49,6 +51,7 @@ public class World : MonoBehaviour
                 chunk.voxelSize = blockSize; // si tu as ce champ
                 chunk.chunkCoords = coord; // si tu as ce champ
                 chunk.LOD = GetLOD(coord.magnitude); // si tu as ce champ
+                chunk.genMotor = genMotor;
             }
             generatedChunks++;
             if (++chunksThisFrame >= simultaneousChunks)
