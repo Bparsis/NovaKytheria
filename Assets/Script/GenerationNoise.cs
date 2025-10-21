@@ -1,4 +1,5 @@
 using System;
+using Unity.Mathematics;
 using UnityEngine;
 
 public class GenerationNoise
@@ -8,7 +9,7 @@ public class GenerationNoise
     readonly private FastNoiseLite mountainNoise;
     readonly private float mountainFrequency = 5e-9f;
     readonly private FastNoiseLite oceanNoise;
-    readonly private float oceanFrequency = 3e-9f;
+    readonly private float oceanFrequency = 2e-8f;
     readonly private FastNoiseLite riverNoise;
     readonly private float riverFrequency = 1e-8f;
 
@@ -28,14 +29,14 @@ public class GenerationNoise
         mountainNoise = new FastNoiseLite(seed);
         mountainNoise.SetNoiseType(FastNoiseLite.NoiseType.OpenSimplex2);
         mountainNoise.SetFractalType(FastNoiseLite.FractalType.Ridged);
-        mountainNoise.SetFractalOctaves(6);
+        mountainNoise.SetFractalOctaves(4);
         mountainNoise.SetFrequency(mountainFrequency);
 
         // Océans : FBM classique pour fonds irréguliers
         oceanNoise = new FastNoiseLite(seed);
         oceanNoise.SetNoiseType(FastNoiseLite.NoiseType.OpenSimplex2);
         oceanNoise.SetFractalType(FastNoiseLite.FractalType.FBm);
-        oceanNoise.SetFractalOctaves(4);
+        oceanNoise.SetFractalOctaves(6);
         oceanNoise.SetFractalGain(0.5f);
         oceanNoise.SetFrequency(oceanFrequency);
 
@@ -43,9 +44,11 @@ public class GenerationNoise
         riverNoise = new FastNoiseLite(seed);
         riverNoise.SetNoiseType(FastNoiseLite.NoiseType.OpenSimplex2);
         riverNoise.SetFractalType(FastNoiseLite.FractalType.Ridged);
-        riverNoise.SetFrequency(1e-8f);
+        riverNoise.SetFrequency(riverFrequency);
     }
 
+    #region Generator
+    #region Continent
     /// <summary>
     /// -1 = océan profond, +1 = continent
     /// </summary>
@@ -56,33 +59,69 @@ public class GenerationNoise
         n += 0.1f; // léger biais vers la terre
         return Mathf.Clamp(n, -1f, 1f);
     }
-
+    #endregion Continent
+    #region Mountain
     public float GetMountain(float x, float z)
     {
         float mNoise = mountainNoise.GetNoise(x, z);
-        float continental = GetContinent(x, z);
-        float mountainMask = Mathf.SmoothStep(0.1f, 0.9f, continental);
-        float mountainHeight = Mathf.SmoothStep(-0.9f,0.9f,mNoise);
-        return Mathf.Clamp(mountainHeight, -1f, 1f);
+        float mountainMask = GetMountainMask(x, z);
+        float mountainHeight = Mathf.SmoothStep(0, 2, mNoise);
+        mountainHeight *= mountainMask;
+        mountainHeight = Mathf.Lerp(0f, 1f, mountainHeight);
+        return mountainHeight;
     }
     public float GetMountainMask(float x, float z)
     {
         float continental = GetContinent(x, z);
-        float mountainMask = Mathf.SmoothStep(0f, 1f, continental);
-        return Mathf.Clamp(mountainMask, -1f, 1f);
+        float mountainMask = Mathf.SmoothStep(0.1f, 1.8f, continental);
+        return mountainMask;
     }
-
+    #endregion Mountain
+    #region Ocean
     public float GetOcean(float x, float z)
     {
-        float n = oceanNoise.GetNoise(x, z) * 2.5f;
-        n = Mathf.Pow(Mathf.Abs(n), 1.3f) * Mathf.Sign(n);
-        return Mathf.Clamp(n, -1f, 1f);
+        float oNoise = oceanNoise.GetNoise(x, z);
+        float oceanMask = GetOceanMask(x, z);
+        float oceanDepth = Mathf.SmoothStep(0f, 1f, oNoise);
+        oceanDepth = (oceanDepth * -1f) + 1f;
+        oceanDepth *= oceanMask;
+        oceanDepth = Mathf.Lerp(-1f, 1f, oceanDepth);
+        oceanDepth = Mathf.Clamp01(oceanDepth);
+        return oceanDepth;
     }
+    public float GetOceanMask(float x, float z)
+    {
+        float continental = GetContinent(x, z);
+        float oceanMask = Mathf.Pow(Mathf.Abs(continental), 1.3f) * Mathf.Sign(continental);
+        oceanMask += 0.5f;
+        oceanMask = (oceanMask * Mathf.Sign(-1)) + 1f;
+        return oceanMask;
+    }
+    #endregion Ocean
+    #region River
     public float GetRiver(float x, float z)
     {
-        float n = riverNoise.GetNoise(x, z);
-        return n;
+        float riverDepth = riverNoise.GetNoise(x, z);
+        riverDepth += 1;
+        riverDepth /= 2;
+        float riverMask = GetRiverMask(x, z);
+        riverDepth *= riverMask;
+        riverDepth = Mathf.Clamp01(riverDepth);
+        return riverDepth;
     }
+    public float GetRiverMask(float x, float z)
+    {
+        float riverMask = GetContinent(x, z);
+        if (riverMask < -0.2f)
+            riverMask = -1;
+        else if (-0.2f < riverMask && riverMask < 0.2f)
+            riverMask *= 2.5f;
+        else
+            riverMask = 1;
+        return riverMask;
+    }
+    #endregion River
+    #endregion Generator
 
     /// <summary>
     /// Génère la hauteur finale du terrain (en mètres)
@@ -90,26 +129,11 @@ public class GenerationNoise
     public float GetHeight(float x, float z)
     {
         float continental = GetContinent(x, z);
-        // Debug.Log($"Continentalness at ({x}, {z}) = {continental}  --  GenerationNoise.cs L54");
-        // Masques pour savoir où appliquer montagnes / fosses
-        float mountainMask = Mathf.SmoothStep(0.45f, 0.75f, continental);
-        float oceanMask = 1f + Mathf.SmoothStep(-0.2f, -0.1f, continental);
-        // Debug.Log($"MountainMask at ({x}, {z}) = {mountainMask}, OceanMask = {oceanMask}  --  GenerationNoise.cs L58");
-        // Base (océan profond → haut plateau)
         float baseHeight = Mathf.Lerp(-2000f, +2000f, (continental + 1f) / 2f);
-        // Debug.Log($"BaseHeight at ({x}, {z}) = {baseHeight}m  --  GenerationNoise.cs L61");
-        // Reliefs
-        float mNoise = mountainNoise.GetNoise(x, z) * 2.5f;
-        float oNoise = oceanNoise.GetNoise(x, z) * 2.5f;
-        // Debug.Log($"MountainNoise at ({x}, {z}) = {mNoise}, OceanNoise = {oNoise}  --  GenerationNoise.cs L65");
-        // Montagnes (pics)
-        float mountainHeight = Mathf.Pow(Mathf.Abs(mNoise), 1.8f) * 4500f * mountainMask;
-        // Fosses
-        float oceanDepth = -Mathf.Pow(Mathf.Abs(oNoise), 1.5f) * 4000f * oceanMask;
-        // Debug.Log($"MountainHeight at ({x}, {z}) = {mountainHeight}m, OceanDepth = {oceanDepth}m  --  GenerationNoise.cs L70");
-        float finalHeight = baseHeight + mountainHeight;
-        // Debug.Log($"FinalHeight at ({x}, {z}) = {finalHeight}m  --  GenerationNoise.cs L72");
-        // return Mathf.Clamp(baseHeight, -10000f, 9000f);
+        float mountainHeight = GetMountain(x, z) * 8000;
+        float oceanDepth = GetOcean(x, z) * 8000 * -1;
+        float riverDepth = GetRiver(x, z) * 100000 * -1;
+        float finalHeight = baseHeight + mountainHeight + oceanDepth;
         return Mathf.Clamp(finalHeight, -10000f, 9000f);
     }
 }

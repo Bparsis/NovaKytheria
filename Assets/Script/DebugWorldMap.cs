@@ -16,14 +16,15 @@ public class DebugWorldMap : MonoBehaviour
         StartCoroutine(ContinentalRenderGen());
         StartCoroutine(MountainRenderGen());
         StartCoroutine(MountainMaskRenderGen());
-        // StartCoroutine(OceanRenderGen());
-        // StartCoroutine(RiverRenderGen());
+        StartCoroutine(OceanRenderGen());
+        StartCoroutine(OceanMaskRenderGen());
+        StartCoroutine(RiverRenderGen());
+        StartCoroutine(RiverMaskRenderGen());
         StartCoroutine(FinalRenderGen());
     }
     IEnumerator RiverRenderGen()
     {
-        // Debug.Log("Génération de la carte du monde en cours...");
-        GameObject RiverRenderPlane = Instantiate(DebugWorldMapPlane, new Vector3(150, 0, 50), Quaternion.identity, transform);
+        GameObject RiverRenderPlane = Instantiate(DebugWorldMapPlane, new Vector3(350, 0, 50), Quaternion.identity, transform);
         RiverRenderPlane.transform.localScale = new Vector3(10, 1, 10);
         RiverRenderPlane.name = "RiverRenderGen";
         Texture2D RiverRenderTex = new Texture2D(size, size, TextureFormat.RGBA32, false);
@@ -46,10 +47,35 @@ public class DebugWorldMap : MonoBehaviour
         }
         yield return null;
     }
+
+    IEnumerator RiverMaskRenderGen()
+    {
+        GameObject RiverMaskRenderPlane = Instantiate(DebugWorldMapPlane, new Vector3(350, 0, -50), Quaternion.identity, transform);
+        RiverMaskRenderPlane.transform.localScale = new Vector3(10, 1, 10);
+        RiverMaskRenderPlane.name = "RiverMaskRenderGen";
+        Texture2D RiverMaskRenderTex = new Texture2D(size, size, TextureFormat.RGBA32, false);
+        Material RiverMaskRenderMat = RiverMaskRenderPlane.GetComponent<Renderer>().material;
+        for (int x = 0; x < size; x++)
+        {
+            yield return null; // laisse une frame pour l'instanciation
+            Debug.Log($"Génération de RiverMaskRenderGen en cours... {x * 100 / size}%");
+            RiverMaskRenderTex.Apply();
+            RiverMaskRenderMat.mainTexture = RiverMaskRenderTex;
+            for (int z = 0; z < size; z++)
+            {
+                float worldX = x * worldScale;
+                float worldZ = z * worldScale;
+
+                float m = genMotor.GetRiverMask(worldX, worldZ);
+                Color col = new Color((m + 1f) / 2f, (m + 1f) / 2f, (m + 1f) / 2f);
+                RiverMaskRenderTex.SetPixel(x, z, col);
+            }
+        }
+        yield return null;
+    }
     IEnumerator OceanRenderGen()
     {
-        // Debug.Log("Génération de la carte du monde en cours...");
-        GameObject OceanRenderPlane = Instantiate(DebugWorldMapPlane, new Vector3(150, 0, 150), Quaternion.identity, transform);
+        GameObject OceanRenderPlane = Instantiate(DebugWorldMapPlane, new Vector3(250, 0, 50), Quaternion.identity, transform);
         OceanRenderPlane.transform.localScale = new Vector3(10, 1, 10);
         OceanRenderPlane.name = "OceanRenderGen";
         Texture2D OceanRenderTex = new Texture2D(size, size, TextureFormat.RGBA32, false);
@@ -72,9 +98,34 @@ public class DebugWorldMap : MonoBehaviour
         }
         yield return null;
     }
+    IEnumerator OceanMaskRenderGen()
+    {
+        GameObject OceanMaskRenderPlane = Instantiate(DebugWorldMapPlane, new Vector3(250, 0, -50), Quaternion.identity, transform);
+        OceanMaskRenderPlane.transform.localScale = new Vector3(10, 1, 10);
+        OceanMaskRenderPlane.name = "OceanMaskRenderGen";
+        Texture2D OceanMaskRenderTex = new Texture2D(size, size, TextureFormat.RGBA32, false);
+        Material OceanMaskRenderMat = OceanMaskRenderPlane.GetComponent<Renderer>().material;
+        for (int x = 0; x < size; x++)
+        {
+            yield return null; // laisse une frame pour l'instanciation
+            Debug.Log($"Génération de OceanMaskRenderGen en cours... {x * 100 / size}%");
+            OceanMaskRenderTex.Apply();
+            OceanMaskRenderMat.mainTexture = OceanMaskRenderTex;
+            for (int z = 0; z < size; z++)
+            {
+                float worldX = x * worldScale;
+                float worldZ = z * worldScale;
+
+                float m = genMotor.GetOceanMask(worldX, worldZ);
+                Color col = new Color((m + 1f) / 2f, (m + 1f) / 2f, (m + 1f) / 2f);
+                OceanMaskRenderTex.SetPixel(x, z, col);
+            }
+        }
+        yield return null;
+    }
     IEnumerator MountainMaskRenderGen()
     {
-        GameObject MountainMaskRenderPlane = Instantiate(DebugWorldMapPlane, new Vector3(150, 0, 150), Quaternion.identity, transform);
+        GameObject MountainMaskRenderPlane = Instantiate(DebugWorldMapPlane, new Vector3(150, 0, -50), Quaternion.identity, transform);
         MountainMaskRenderPlane.transform.localScale = new Vector3(10, 1, 10);
         MountainMaskRenderPlane.name = "MountainMaskRenderGen";
         Texture2D MountainMaskRenderTex = new Texture2D(size, size, TextureFormat.RGBA32, false);
@@ -82,7 +133,7 @@ public class DebugWorldMap : MonoBehaviour
         for (int x = 0; x < size; x++)
         {
             yield return null; // laisse une frame pour l'instanciation
-            Debug.Log($"Génération de MountainRenderGen en cours... {x * 100 / size}%");
+            Debug.Log($"Génération de MountainMaskRenderGen en cours... {x * 100 / size}%");
             MountainMaskRenderTex.Apply();
             MountainMaskRenderMat.mainTexture = MountainMaskRenderTex;
             for (int z = 0; z < size; z++)
@@ -99,8 +150,7 @@ public class DebugWorldMap : MonoBehaviour
     }
     IEnumerator MountainRenderGen()
     {
-        // Debug.Log("Génération de la carte du monde en cours...");
-        GameObject MountainRenderPlane = Instantiate(DebugWorldMapPlane, new Vector3(50, 0, 150), Quaternion.identity, transform);
+        GameObject MountainRenderPlane = Instantiate(DebugWorldMapPlane, new Vector3(150, 0, 50), Quaternion.identity, transform);
         MountainRenderPlane.transform.localScale = new Vector3(10, 1, 10);
         MountainRenderPlane.name = "MountainRenderGen";
         Texture2D MountainRenderTex = new Texture2D(size, size, TextureFormat.RGBA32, false);
@@ -125,7 +175,6 @@ public class DebugWorldMap : MonoBehaviour
     }
     IEnumerator ContinentalRenderGen()
     {
-        // Debug.Log("Génération de la carte du monde en cours...");
         GameObject ContinentalRenderPlane = Instantiate(DebugWorldMapPlane, new Vector3(-50, 0, 150), Quaternion.identity, transform);
         ContinentalRenderPlane.transform.localScale = new Vector3(10, 1, 10);
         ContinentalRenderPlane.name = "ContinentalRenderGen";
@@ -151,7 +200,6 @@ public class DebugWorldMap : MonoBehaviour
     }
     IEnumerator FinalRenderGen()
     {
-        // Debug.Log("Génération de la carte du monde en cours...");
         GameObject FinalRenderPlane = Instantiate(DebugWorldMapPlane, new Vector3(0, 0, 0), Quaternion.identity, transform);
         FinalRenderPlane.transform.localScale = new Vector3(20, 1, 20);
         FinalRenderPlane.name = "FinalRenderGen";
@@ -184,8 +232,8 @@ public class DebugWorldMap : MonoBehaviour
             if (h < 200) return new Color(0.9f, 0.85f, 0.6f);           // plages
             if (h < 1000) return new Color(0.1f, 0.6f, 0.1f);           // plaine
             if (h < 3000) return new Color(0.3f, 0.4f, 0.2f);           // colline
-            if (h < 5000) return new Color(0.7f, 0.25f, 0.15f);         // montagne
-            if (h < 7000) return new Color(0.7f, 0.05f, 0.07f);           // haute montagne
+            if (h < 5000) return new Color(0.5f, 0.45f, 0.35f);         // montagne
+            if (h < 7000) return new Color(0.7f, 0.7f, 0.7f);           // haute montagne
             return Color.white;                                         // sommet enneigé
         }
         yield return null;
