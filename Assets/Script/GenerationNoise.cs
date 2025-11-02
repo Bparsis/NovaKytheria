@@ -4,53 +4,33 @@ using UnityEngine;
 
 public class GenerationNoise
 {
-    readonly private FastNoiseLite continentalNoise;
-    readonly private float continentFrequency = 1e-8f;
-    readonly private FastNoiseLite mountainNoise;
-    readonly private float mountainFrequency = 5e-9f;
-    readonly private FastNoiseLite oceanNoise;
-    readonly private float oceanFrequency = 2e-8f;
-    readonly private FastNoiseLite riverNoise;
-    readonly private float riverFrequency = 1e-8f;
-    readonly private FastNoiseLite caveNoise;
-    readonly private float caveFrequency = 2e-6f;
+    readonly private TiledFastNoiseLite continentalNoise;
+    readonly private float continentFrequency = 0.3f;
+    readonly private TiledFastNoiseLite mountainNoise;
+    readonly private float mountainFrequency = 1f;
+    readonly private TiledFastNoiseLite oceanNoise;
+    readonly private float oceanFrequency = 0.7f;
+    readonly private TiledFastNoiseLite riverNoise;
+    readonly private float riverFrequency = 0.9f;
+    readonly private TiledFastNoiseLite caveNoise;
+    readonly private float caveFrequency = 0.3f;
 
     public GenerationNoise(int seed)
 
     {
-        // Continentalité : très basse fréquence (grandes masses)
-        continentalNoise = new FastNoiseLite(seed);
-        continentalNoise.SetNoiseType(FastNoiseLite.NoiseType.OpenSimplex2);
-        continentalNoise.SetFractalType(FastNoiseLite.FractalType.FBm);
-        continentalNoise.SetFractalOctaves(8);
-        continentalNoise.SetFractalLacunarity(2.0f);
-        continentalNoise.SetFractalGain(0.5f);
-        continentalNoise.SetFrequency(continentFrequency);
+        // // Continentalité : très basse fréquence (grandes masses)
+        continentalNoise = new TiledFastNoiseLite(seed, continentFrequency, 250_000_000f, 250_000_000f, 250_000_000f, FastNoiseLite.NoiseType.OpenSimplex2, FastNoiseLite.FractalType.FBm, 0.5f, 6);
 
         // Montagnes : ridged multi pour pics
-        mountainNoise = new FastNoiseLite(seed);
-        mountainNoise.SetNoiseType(FastNoiseLite.NoiseType.OpenSimplex2);
-        mountainNoise.SetFractalType(FastNoiseLite.FractalType.Ridged);
-        mountainNoise.SetFractalOctaves(4);
-        mountainNoise.SetFrequency(mountainFrequency);
+        mountainNoise = new TiledFastNoiseLite(seed, mountainFrequency, 250_000_000f, 250_000_000f, 250_000_000f, FastNoiseLite.NoiseType.OpenSimplex2, FastNoiseLite.FractalType.Ridged, 0.5f, 4);
 
         // Océans : FBM classique pour fonds irréguliers
-        oceanNoise = new FastNoiseLite(seed);
-        oceanNoise.SetNoiseType(FastNoiseLite.NoiseType.OpenSimplex2);
-        oceanNoise.SetFractalType(FastNoiseLite.FractalType.FBm);
-        oceanNoise.SetFractalOctaves(6);
-        oceanNoise.SetFractalGain(0.5f);
-        oceanNoise.SetFrequency(oceanFrequency);
+        oceanNoise = new TiledFastNoiseLite(seed, oceanFrequency, 250_000_000f, 250_000_000f, 250_000_000f, FastNoiseLite.NoiseType.OpenSimplex2, FastNoiseLite.FractalType.FBm, 0.5f, 6);
 
         // Rivières : ridged pour vallées
-        riverNoise = new FastNoiseLite(seed);
-        riverNoise.SetNoiseType(FastNoiseLite.NoiseType.OpenSimplex2);
-        riverNoise.SetFractalType(FastNoiseLite.FractalType.Ridged);
-        riverNoise.SetFrequency(riverFrequency);
+        riverNoise = new TiledFastNoiseLite(seed, riverFrequency, 250_000_000f, 250_000_000f, 250_000_000f, FastNoiseLite.NoiseType.OpenSimplex2, FastNoiseLite.FractalType.Ridged, 0.5f, 3);
 
-        caveNoise = new FastNoiseLite(seed);
-        caveNoise.SetNoiseType(FastNoiseLite.NoiseType.OpenSimplex2);
-        caveNoise.SetFrequency(caveFrequency);
+        caveNoise = new TiledFastNoiseLite(seed, caveFrequency, 250_000_000f, 250_000_000f, 250_000_000f, FastNoiseLite.NoiseType.OpenSimplex2);
     }
 
     #region Generator
@@ -60,36 +40,36 @@ public class GenerationNoise
     /// </summary>
     public float GetContinent(float x, float z)
     {
-        float n = continentalNoise.GetNoise(x, z);
-        n = Mathf.Pow(Mathf.Abs(n), 1.3f) * Mathf.Sign(n);
-        n += 0.1f; // léger biais vers la terre
+        float n = continentalNoise.GetTiledNoise(x, z);
+        n += 0.14f;// léger biais vers la terre
+        n = (n + 1) / 2;
+        n = Mathf.SmoothStep(-1.2f, 1f, n);
         return Mathf.Clamp(n, -1f, 1f);
     }
     #endregion Continent
     #region Mountain
     public float GetMountain(float x, float z)
     {
-        float mNoise = mountainNoise.GetNoise(x, z);
+        float mNoise = mountainNoise.GetTiledNoise(x, z);
+        float mountainHeight = Mathf.SmoothStep(0, 1, mNoise);
         float mountainMask = GetMountainMask(x, z);
-        float mountainHeight = Mathf.SmoothStep(0, 2, mNoise);
         mountainHeight *= mountainMask;
-        mountainHeight = Mathf.Lerp(0f, 1f, mountainHeight);
         return mountainHeight;
     }
     public float GetMountainMask(float x, float z)
     {
         float continental = GetContinent(x, z);
-        float mountainMask = Mathf.SmoothStep(0.1f, 1.8f, continental);
+        float mountainMask = Mathf.SmoothStep(0.1f, 0.9f, continental);
         return mountainMask;
     }
     #endregion Mountain
     #region Ocean
     public float GetOcean(float x, float z)
     {
-        float oNoise = oceanNoise.GetNoise(x, z);
-        float oceanMask = GetOceanMask(x, z);
+        float oNoise = oceanNoise.GetTiledNoise(x, z);
         float oceanDepth = Mathf.SmoothStep(0f, 1f, oNoise);
         oceanDepth = (oceanDepth * -1f) + 1f;
+        float oceanMask = GetOceanMask(x, z);
         oceanDepth *= oceanMask;
         oceanDepth = Mathf.Lerp(-1f, 1f, oceanDepth);
         oceanDepth = Mathf.Clamp01(oceanDepth);
@@ -107,9 +87,7 @@ public class GenerationNoise
     #region River
     public float GetRiver(float x, float z)
     {
-        float riverDepth = riverNoise.GetNoise(x, z);
-        riverDepth += 1;
-        riverDepth /= 2;
+        float riverDepth = riverNoise.GetTiledNoise(x, z);
         float riverMask = GetRiverMask(x, z);
         riverDepth *= riverMask;
         riverDepth = Mathf.Clamp01(riverDepth);
@@ -130,7 +108,7 @@ public class GenerationNoise
     #region Cave
     public float GetCave(float x, float y, float z)
     {
-        float caveDensity = caveNoise.GetNoise(x, y, z);
+        float caveDensity = caveNoise.GetTiledNoise(x, y, z);
         return caveDensity;
     }
     #endregion Cave
@@ -141,12 +119,11 @@ public class GenerationNoise
     /// </summary>
     public float GetHeight(float x, float z)
     {
-        float continental = GetContinent(x, z);
-        float baseHeight = Mathf.Lerp(-2000f, +2000f, (continental + 1f) / 2f);
-        float mountainHeight = GetMountain(x, z) * 8000;
-        float oceanDepth = GetOcean(x, z) * 8000 * -1;
-        float riverDepth = GetRiver(x, z) * 100000 * -1;
-        float finalHeight = baseHeight + mountainHeight + oceanDepth;
+        float baseHeight = GetContinent(x, z) * 3000;
+        float mountainHeight = GetMountain(x, z) * 7000;
+        float oceanDepth = GetOcean(x, z) * 7000 * -1;
+        float riverDepth = GetRiver(x, z) * 100 * -1;
+        float finalHeight = baseHeight + mountainHeight + oceanDepth + riverDepth;
         return Mathf.Clamp(finalHeight, -10000f, 10000f);
     }
 }

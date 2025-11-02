@@ -6,7 +6,7 @@ public class DebugWorldMap : MonoBehaviour
 {
     public GameObject DebugWorldMapPlane;
     public int size = 1000;
-    public float worldScale = 250000f; // distance entre deux pixels (0.2 mètres)
+    public float worldScale = 250_000_000f; // distance entre deux pixels (0.2 mètres)
     public int seed = 987654321;
     private GenerationNoise genMotor;
 
@@ -32,7 +32,7 @@ public class DebugWorldMap : MonoBehaviour
         for (int x = 0; x < size; x++)
         {
             yield return null; // laisse une frame pour l'instanciation
-            Debug.Log($"Génération de RiverRenderGen en cours... {x * 100 / size}%");
+            // Debug.Log($"Génération de RiverRenderGen en cours... {x * 100 / size}%");
             RiverRenderTex.Apply();
             RiverRenderMat.mainTexture = RiverRenderTex;
             for (int z = 0; z < size; z++)
@@ -58,7 +58,7 @@ public class DebugWorldMap : MonoBehaviour
         for (int x = 0; x < size; x++)
         {
             yield return null; // laisse une frame pour l'instanciation
-            Debug.Log($"Génération de RiverMaskRenderGen en cours... {x * 100 / size}%");
+            // Debug.Log($"Génération de RiverMaskRenderGen en cours... {x * 100 / size}%");
             RiverMaskRenderTex.Apply();
             RiverMaskRenderMat.mainTexture = RiverMaskRenderTex;
             for (int z = 0; z < size; z++)
@@ -83,7 +83,7 @@ public class DebugWorldMap : MonoBehaviour
         for (int x = 0; x < size; x++)
         {
             yield return null; // laisse une frame pour l'instanciation
-            Debug.Log($"Génération de OceanRenderGen en cours... {x * 100 / size}%");
+            // Debug.Log($"Génération de OceanRenderGen en cours... {x * 100 / size}%");
             OceanRenderTex.Apply();
             OceanRenderMat.mainTexture = OceanRenderTex;
             for (int z = 0; z < size; z++)
@@ -108,7 +108,7 @@ public class DebugWorldMap : MonoBehaviour
         for (int x = 0; x < size; x++)
         {
             yield return null; // laisse une frame pour l'instanciation
-            Debug.Log($"Génération de OceanMaskRenderGen en cours... {x * 100 / size}%");
+            // Debug.Log($"Génération de OceanMaskRenderGen en cours... {x * 100 / size}%");
             OceanMaskRenderTex.Apply();
             OceanMaskRenderMat.mainTexture = OceanMaskRenderTex;
             for (int z = 0; z < size; z++)
@@ -133,7 +133,7 @@ public class DebugWorldMap : MonoBehaviour
         for (int x = 0; x < size; x++)
         {
             yield return null; // laisse une frame pour l'instanciation
-            Debug.Log($"Génération de MountainMaskRenderGen en cours... {x * 100 / size}%");
+            // Debug.Log($"Génération de MountainMaskRenderGen en cours... {x * 100 / size}%");
             MountainMaskRenderTex.Apply();
             MountainMaskRenderMat.mainTexture = MountainMaskRenderTex;
             for (int z = 0; z < size; z++)
@@ -158,7 +158,7 @@ public class DebugWorldMap : MonoBehaviour
         for (int x = 0; x < size; x++)
         {
             yield return null; // laisse une frame pour l'instanciation
-            Debug.Log($"Génération de MountainRenderGen en cours... {x * 100 / size}%");
+            // Debug.Log($"Génération de MountainRenderGen en cours... {x * 100 / size}%");
             MountainRenderTex.Apply();
             MountainRenderMat.mainTexture = MountainRenderTex;
             for (int z = 0; z < size; z++)
@@ -180,22 +180,25 @@ public class DebugWorldMap : MonoBehaviour
         ContinentalRenderPlane.name = "ContinentalRenderGen";
         Texture2D ContinentalRenderTex = new Texture2D(size, size, TextureFormat.RGBA32, false);
         Material ContinentalRenderMat = ContinentalRenderPlane.GetComponent<Renderer>().material;
+        float nbsup = 0;
         for (int x = 0; x < size; x++)
         {
             yield return null; // laisse une frame pour l'instanciation
-            Debug.Log($"Génération de ContinentalRenderGen en cours... {x * 100 / size}%");
-            ContinentalRenderTex.Apply();
-            ContinentalRenderMat.mainTexture = ContinentalRenderTex;
+            // Debug.Log($"Génération de ContinentalRenderGen en cours... {x * 100 / size}%");
             for (int z = 0; z < size; z++)
             {
                 float worldX = x * worldScale;
                 float worldZ = z * worldScale;
 
                 float c = genMotor.GetContinent(worldX, worldZ);
+                nbsup += c < 0 ? -1 : 1;
                 Color col = new Color((c + 1f) / 2f, (c + 1f) / 2f, (c + 1f) / 2f);
                 ContinentalRenderTex.SetPixel(x, z, col);
             }
+            ContinentalRenderTex.Apply();
+            ContinentalRenderMat.mainTexture = ContinentalRenderTex;
         }
+        Debug.Log("Continental render gen nbsup"+nbsup);
         yield return null;
     }
     IEnumerator FinalRenderGen()
@@ -205,6 +208,7 @@ public class DebugWorldMap : MonoBehaviour
         FinalRenderPlane.name = "FinalRenderGen";
         Texture2D FinalRenderTex = new Texture2D(size, size, TextureFormat.RGBA32, false);
         Material FinalRenderMat = FinalRenderPlane.GetComponent<Renderer>().material;
+        float min = 0, max = 0;
         for (int x = 0; x < size; x++)
         {
             yield return null; // laisse une frame pour l'instanciation
@@ -215,12 +219,15 @@ public class DebugWorldMap : MonoBehaviour
                 float worldZ = z * worldScale;
 
                 float h = genMotor.GetHeight(worldX, worldZ);
+                min = h < min ? h : min;
+                max = h > max ? h : max;
                 Color c = ColorFromHeight(h);
                 FinalRenderTex.SetPixel(x, z, c);
             }
             FinalRenderTex.Apply();
             FinalRenderMat.mainTexture = FinalRenderTex;
         }
+        Debug.Log("Continental render gen min :"+min+"max :"+max);
 
         static Color ColorFromHeight(float h)
         {
